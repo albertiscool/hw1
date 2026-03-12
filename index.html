@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HW1 Grid Map & Policy Evaluation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            color: #333;
+            background: #fff;
+        }
+        h2 { margin-top: 30px; }
+        h3 { margin-top: 20px; }
+        hr { margin: 20px 0; border: none; border-top: 1px solid #aaa; }
+
+        .controls { margin-bottom: 10px; }
+        .controls input[type="number"] {
+            width: 50px; padding: 3px 5px; font-size: 14px;
+        }
+        button {
+            padding: 4px 14px; font-size: 14px; cursor: pointer;
+        }
+
+        .grid-row { display: flex; }
+        .grid-cell {
+            width: 45px; height: 45px;
+            border: 1px solid #333;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 14px; user-select: none;
+            margin-right: -1px; margin-bottom: -1px;
+        }
+        .grid-cell:hover { background-color: #eee; }
+        .grid-cell.start { background-color: #28a745; color: white; }
+        .grid-cell.end { background-color: #dc3545; color: white; }
+        .grid-cell.obstacle { background-color: #999; color: #999; }
+        .grid-cell.path-cell { background-color: #ffc107; }
+
+        .result-container { display: flex; gap: 40px; margin-top: 20px; flex-wrap: wrap; }
+        .matrix-wrapper { display: flex; flex-direction: column; align-items: flex-start; }
+        .matrix-title { font-weight: bold; margin-bottom: 8px; font-size: 16px; }
+
+        .result-cell {
+            width: 50px; height: 50px;
+            border: 1px solid #999;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; margin-right: -1px; margin-bottom: -1px;
+            background-color: #f5f5f5; font-weight: bold;
+        }
+        .result-cell.obstacle-cell { background-color: #999; color: #fff; }
+        .result-cell.end-cell { background-color: #dc3545; color: #fff; }
+        .result-cell.start-cell { background-color: #28a745; color: #fff; }
+        .result-cell.path-highlight { background-color: #ffc107; }
+
+        .arrow { font-size: 20px; }
+        #info-text { font-weight: bold; color: #0056b3; margin-top: 10px; }
+        .legend { font-size: 14px; color: #555; margin-bottom: 5px; }
+        .section-btns { margin-top: 15px; }
+        .section-btns button { margin-right: 8px; }
+        .info-bar { margin-top: 12px; font-size: 13px; color: #555; }
+        .info-bar span { margin-right: 20px; }
+    </style>
+</head>
+<body>
+    <h2>作業內容</h2>
+
+    <h3>HW1-1: 網格地圖開發</h3>
+    <div class="controls">
+        <label>Generate n x n Square</label><br><br>
+        <label for="n-input">Enter a number between 5 and 10: </label>
+        <input type="number" id="n-input" min="5" max="10" value="5">
+        <button onclick="generateSquare()">Generate Square</button>
+    </div>
+
+    <div id="grid-section" style="display:none;">
+        <h3 id="grid-title"></h3>
+        <p class="legend">1. Click on a cell to set up the start grid as <span style="color:#28a745;font-weight:bold;">green</span> or the end grid as <span style="color:#dc3545;font-weight:bold;">red</span>. Obstacles will be <span style="color:#999;font-weight:bold;">gray</span>.</p>
+        <div id="grid-container"></div>
+        <p id="info-text"></p>
+        <div class="section-btns">
+            <button id="evaluate-btn" onclick="evaluatePolicy()" style="display:none;">隨機策略 + 策略評估 (HW1-2)</button>
+            <button id="vi-btn" onclick="runValueIteration()" style="display:none;">價值迭代 + 策略萃取 (HW1-3)</button>
+        </div>
+    </div>
+
+    <hr>
+
+    <div id="pe-result" style="display:none;">
+        <h3>HW1-2: 策略顯示與價值評估 (Policy Evaluation)</h3>
+        <div class="result-container">
+            <div class="matrix-wrapper">
+                <div class="matrix-title">Value Matrix</div>
+                <div id="pe-value-matrix"></div>
+            </div>
+            <div class="matrix-wrapper">
+                <div class="matrix-title">Policy Matrix</div>
+                <div id="pe-policy-matrix"></div>
+            </div>
+        </div>
+        <div class="info-bar" id="pe-info"></div>
+    </div>
+
+    <div id="vi-result" style="display:none;">
+        <h3>HW1-3: 價值迭代與最佳路徑 (Value Iteration)</h3>
+        <div class="result-container">
+            <div class="matrix-wrapper">
+                <div class="matrix-title">Value Matrix (Optimal)</div>
+                <div id="vi-value-matrix"></div>
+            </div>
+            <div class="matrix-wrapper">
+                <div class="matrix-title">Policy Matrix (Optimal)</div>
+                <div id="vi-policy-matrix"></div>
+            </div>
+        </div>
+        <div class="info-bar" id="vi-info"></div>
+    </div>
+
+<script>
+    var n = 0;
+    var start = null;
+    var end = null;
+    var obstacles = [];
+    var clicks = 0;
+    var maxObstacles = 0;
+
+    var ACTIONS = ['U', 'D', 'L', 'R'];
+    var GAMMA = 0.9;
+    var REWARD_STEP = -1;
+    var REWARD_GOAL = 10;
+    var THETA = 1e-6;
+    var MAX_ITER = 1000;
+
+    /* ─── 工具函數 ─── */
+    function getNext(r, c, a) {
+        if (a === 'U') return [r - 1, c];
+        if (a === 'D') return [r + 1, c];
+        if (a === 'L') return [r, c - 1];
+        if (a === 'R') return [r, c + 1];
+        return [r, c];
+    }
+
+    function key(r, c) { return r + ',' + c; }
+
+    function isObstacle(r, c) {
+        for (var i = 0; i < obstacles.length; i++) {
+            if (obstacles[i][0] === r && obstacles[i][1] === c) return true;
+        }
+        return false;
+    }
+
+    function isEnd(r, c) { return end && r === end[0] && c === end[1]; }
+
+    function clampState(r, c, nr, nc) {
+        if (nr < 0 || nr >= n || nc < 0 || nc >= n || isObstacle(nr, nc)) {
+            return [r, c];
+        }
+        return [nr, nc];
+    }
+
+    /* ─── 生成網格 ─── */
+    function generateSquare() {
+        n = parseInt(document.getElementById('n-input').value);
+        if (isNaN(n) || n < 5 || n > 10) {
+            alert('請輸入 5 到 10 之間的數字！');
+            return;
+        }
+        start = null; end = null; obstacles = []; clicks = 0;
+        maxObstacles = n - 2;
+
+        document.getElementById('grid-section').style.display = 'block';
+        document.getElementById('grid-title').innerText = n + ' x ' + n + ' Square:';
+        document.getElementById('evaluate-btn').style.display = 'none';
+        document.getElementById('vi-btn').style.display = 'none';
+        document.getElementById('pe-result').style.display = 'none';
+        document.getElementById('vi-result').style.display = 'none';
+        updateInfo();
+
+        var container = document.getElementById('grid-container');
+        container.innerHTML = '';
+        var num = 1;
+        for (var r = 0; r < n; r++) {
+            var row = document.createElement('div');
+            row.className = 'grid-row';
+            for (var c = 0; c < n; c++) {
+                var cell = document.createElement('div');
+                cell.className = 'grid-cell';
+                cell.id = 'cell-' + r + '-' + c;
+                cell.dataset.r = r;
+                cell.dataset.c = c;
+                cell.innerText = num++;
+                (function(cell, r, c) {
+                    cell.onclick = function() { handleClick(cell, r, c); };
+                })(cell, r, c);
+                row.appendChild(cell);
+            }
+            container.appendChild(row);
+        }
+    }
+
+    function updateInfo() {
+        var info = document.getElementById('info-text');
+        if (clicks === 0) {
+            info.innerText = 'Step 1: 點擊設定 Start（綠色）';
+        } else if (clicks === 1) {
+            info.innerText = 'Step 2: 點擊設定 End（紅色）';
+        } else if (obstacles.length < maxObstacles) {
+            info.innerText = 'Step 3: 點擊設定障礙物（灰色），還需 ' + (maxObstacles - obstacles.length) + ' 個（可再次點擊取消）';
+        } else {
+            info.innerText = '設定完成！請點擊下方按鈕進行評估。';
+        }
+    }
+
+    function handleClick(cell, r, c) {
+        if (clicks === 0) {
+            start = [r, c]; cell.classList.add('start'); cell.innerText = 'S';
+            clicks++; updateInfo(); return;
+        }
+        if (clicks === 1) {
+            if (cell.classList.contains('start')) return;
+            end = [r, c]; cell.classList.add('end'); cell.innerText = 'E';
+            clicks++; updateInfo(); return;
+        }
+        if (clicks >= 2) {
+            if (cell.classList.contains('start') || cell.classList.contains('end')) return;
+            if (cell.classList.contains('obstacle')) {
+                cell.classList.remove('obstacle');
+                cell.innerText = r * n + c + 1;
+                obstacles = obstacles.filter(function(o) { return !(o[0] === r && o[1] === c); });
+            } else if (obstacles.length < maxObstacles) {
+                cell.classList.add('obstacle'); cell.innerText = '';
+                obstacles.push([r, c]);
+            }
+            if (obstacles.length >= maxObstacles) {
+                document.getElementById('evaluate-btn').style.display = 'inline-block';
+                document.getElementById('vi-btn').style.display = 'inline-block';
+            } else {
+                document.getElementById('evaluate-btn').style.display = 'none';
+                document.getElementById('vi-btn').style.display = 'none';
+            }
+            updateInfo();
+        }
+    }
+
+    /* ═══════════════════════════════════════════
+       HW1-2: Policy Evaluation（隨機策略，加權和）
+       ═══════════════════════════════════════════ */
+    function evaluatePolicy() {
+        var prob = 1.0 / ACTIONS.length; // 0.25
+
+        // 初始化 V
+        var V = {};
+        for (var r = 0; r < n; r++)
+            for (var c = 0; c < n; c++)
+                V[key(r, c)] = 0.0;
+
+        var iteration = 0;
+        for (iteration = 0; iteration < MAX_ITER; iteration++) {
+            var delta = 0;
+            var V_new = {};
+            for (var k in V) V_new[k] = V[k];
+
+            for (var r = 0; r < n; r++) {
+                for (var c = 0; c < n; c++) {
+                    if (isEnd(r, c) || isObstacle(r, c)) continue;
+
+                    // 動作機率加權和：Σ π(a|s) × [R + γ·V(s')]
+                    var weightedSum = 0.0;
+                    for (var ai = 0; ai < ACTIONS.length; ai++) {
+                        var next = getNext(r, c, ACTIONS[ai]);
+                        var ns = clampState(r, c, next[0], next[1]);
+                        var reward = isEnd(ns[0], ns[1]) ? REWARD_GOAL : REWARD_STEP;
+                        weightedSum += prob * (reward + GAMMA * V[key(ns[0], ns[1])]);
+                    }
+
+                    var vOld = V[key(r, c)];
+                    V_new[key(r, c)] = weightedSum;
+                    delta = Math.max(delta, Math.abs(vOld - weightedSum));
+                }
+            }
+            V = V_new;
+            if (delta < THETA) break;
+        }
+
+        // 隨機策略用於顯示
+        var policy = {};
+        for (var r = 0; r < n; r++)
+            for (var c = 0; c < n; c++)
+                policy[key(r, c)] = (isEnd(r, c) || isObstacle(r, c))
+                    ? null : ACTIONS[Math.floor(Math.random() * 4)];
+
+        var matrices = formatMatrices(V, policy);
+        renderMatrix('pe-value-matrix', matrices.vMatrix, 'value', []);
+        renderMatrix('pe-policy-matrix', matrices.pMatrix, 'policy', []);
+        document.getElementById('pe-info').innerHTML =
+            '<span><b>&gamma; = ' + GAMMA + '</b></span>' +
+            '<span>收斂迭代: ' + (iteration + 1) + ' 次</span>';
+        document.getElementById('pe-result').style.display = 'block';
+        document.getElementById('evaluate-btn').innerText = '重新隨機策略 + 策略評估 (HW1-2)';
+    }
+
+    /* ═══════════════════════════════════════════
+       HW1-3: Value Iteration（Max 運算）+ 策略萃取
+       ═══════════════════════════════════════════ */
+    function runValueIteration() {
+        // 初始化 V
+        var V = {};
+        for (var r = 0; r < n; r++)
+            for (var c = 0; c < n; c++)
+                V[key(r, c)] = 0.0;
+
+        var iteration = 0;
+        for (iteration = 0; iteration < MAX_ITER; iteration++) {
+            var delta = 0;
+            var V_new = {};
+            for (var k in V) V_new[k] = V[k];
+
+            for (var r = 0; r < n; r++) {
+                for (var c = 0; c < n; c++) {
+                    if (isEnd(r, c) || isObstacle(r, c)) continue;
+
+                    // 對所有動作取 Max
+                    var maxVal = -Infinity;
+                    for (var ai = 0; ai < ACTIONS.length; ai++) {
+                        var next = getNext(r, c, ACTIONS[ai]);
+                        var ns = clampState(r, c, next[0], next[1]);
+                        var reward = isEnd(ns[0], ns[1]) ? REWARD_GOAL : REWARD_STEP;
+                        var val = reward + GAMMA * V[key(ns[0], ns[1])];
+                        if (val > maxVal) maxVal = val;
+                    }
+
+                    var vOld = V[key(r, c)];
+                    V_new[key(r, c)] = maxVal;
+                    delta = Math.max(delta, Math.abs(vOld - maxVal));
+                }
+            }
+            V = V_new;
+            if (delta < THETA) break;
+        }
+
+        // 策略萃取 — Argmax
+        var policy = {};
+        for (var r = 0; r < n; r++) {
+            for (var c = 0; c < n; c++) {
+                if (isEnd(r, c) || isObstacle(r, c)) { policy[key(r, c)] = null; continue; }
+                var bestA = null, bestVal = -Infinity;
+                for (var ai = 0; ai < ACTIONS.length; ai++) {
+                    var next = getNext(r, c, ACTIONS[ai]);
+                    var ns = clampState(r, c, next[0], next[1]);
+                    var reward = isEnd(ns[0], ns[1]) ? REWARD_GOAL : REWARD_STEP;
+                    var val = reward + GAMMA * V[key(ns[0], ns[1])];
+                    if (val > bestVal) { bestVal = val; bestA = ACTIONS[ai]; }
+                }
+                policy[key(r, c)] = bestA;
+            }
+        }
+
+        // 最佳路徑萃取
+        var path = [];
+        var cur = start.slice();
+        var visited = {};
+        path.push(cur.slice());
+        while (!(cur[0] === end[0] && cur[1] === end[1]) && path.length < n * n) {
+            var ck = key(cur[0], cur[1]);
+            if (visited[ck]) break;
+            visited[ck] = true;
+            var a = policy[ck];
+            if (!a) break;
+            var next = getNext(cur[0], cur[1], a);
+            var ns = clampState(cur[0], cur[1], next[0], next[1]);
+            if (ns[0] === cur[0] && ns[1] === cur[1]) break;
+            cur = ns;
+            path.push(cur.slice());
+        }
+
+        // 在主網格標示路徑
+        clearPathHighlight();
+        for (var i = 0; i < path.length; i++) {
+            var el = document.getElementById('cell-' + path[i][0] + '-' + path[i][1]);
+            if (el && !el.classList.contains('start') && !el.classList.contains('end') && !el.classList.contains('obstacle')) {
+                el.classList.add('path-cell');
+            }
+        }
+
+        var matrices = formatMatrices(V, policy);
+        renderMatrix('vi-value-matrix', matrices.vMatrix, 'value', path);
+        renderMatrix('vi-policy-matrix', matrices.pMatrix, 'policy', path);
+        document.getElementById('vi-info').innerHTML =
+            '<span><b>&gamma; = ' + GAMMA + '</b></span>' +
+            '<span>收斂迭代: ' + (iteration + 1) + ' 次</span>' +
+            '<span>最佳路徑長度: ' + path.length + ' 步</span>';
+        document.getElementById('vi-result').style.display = 'block';
+        document.getElementById('vi-btn').innerText = '重新價值迭代 + 策略萃取 (HW1-3)';
+    }
+
+    function clearPathHighlight() {
+        var cells = document.querySelectorAll('.grid-cell.path-cell');
+        for (var i = 0; i < cells.length; i++) cells[i].classList.remove('path-cell');
+    }
+
+    /* ─── 格式化矩陣 ─── */
+    function formatMatrices(V, policy) {
+        var vMatrix = [], pMatrix = [];
+        for (var r = 0; r < n; r++) {
+            var vRow = [], pRow = [];
+            for (var c = 0; c < n; c++) {
+                if (isObstacle(r, c)) {
+                    vRow.push('OBSTACLE'); pRow.push('OBSTACLE');
+                } else if (isEnd(r, c)) {
+                    vRow.push(0.0); pRow.push('END');
+                } else if (start && r === start[0] && c === start[1]) {
+                    vRow.push(Math.round(V[key(r, c)] * 100) / 100);
+                    pRow.push('START_' + (policy[key(r, c)] || ''));
+                } else {
+                    vRow.push(Math.round(V[key(r, c)] * 100) / 100);
+                    pRow.push(policy[key(r, c)]);
+                }
+            }
+            vMatrix.push(vRow); pMatrix.push(pRow);
+        }
+        return { vMatrix: vMatrix, pMatrix: pMatrix };
+    }
+
+    /* ─── 渲染結果矩陣 ─── */
+    function renderMatrix(elementId, matrix, type, path) {
+        var container = document.getElementById(elementId);
+        container.innerHTML = '';
+        var pathSet = {};
+        for (var i = 0; i < path.length; i++) pathSet[path[i][0] + ',' + path[i][1]] = true;
+        var arrowMap = { 'U': '\u2191', 'D': '\u2193', 'L': '\u2190', 'R': '\u2192' };
+
+        for (var r = 0; r < n; r++) {
+            var row = document.createElement('div');
+            row.className = 'grid-row';
+            for (var c = 0; c < n; c++) {
+                var cell = document.createElement('div');
+                cell.className = 'result-cell';
+                var val = matrix[r][c];
+                var isPath = pathSet[r + ',' + c];
+
+                if (val === 'OBSTACLE') {
+                    cell.classList.add('obstacle-cell'); cell.innerText = 'X';
+                } else if (val === 'END') {
+                    cell.classList.add('end-cell'); cell.innerText = 'END';
+                } else if (typeof val === 'string' && val.indexOf('START_') === 0) {
+                    cell.classList.add('start-cell');
+                    if (type === 'policy') {
+                        var a = val.replace('START_', '');
+                        cell.innerHTML = '<span class="arrow">' + (arrowMap[a] || '?') + '</span>';
+                    } else {
+                        cell.innerText = 'S';
+                    }
+                } else if (type === 'policy') {
+                    cell.innerHTML = '<span class="arrow">' + (arrowMap[val] || '?') + '</span>';
+                    if (isPath) cell.classList.add('path-highlight');
+                } else {
+                    if (end && r === end[0] && c === end[1]) {
+                        cell.classList.add('end-cell'); cell.innerText = '0.00';
+                    } else {
+                        cell.innerText = parseFloat(val).toFixed(2);
+                        if (isPath) cell.classList.add('path-highlight');
+                    }
+                }
+                row.appendChild(cell);
+            }
+            container.appendChild(row);
+        }
+    }
+</script>
+</body>
+</html>
