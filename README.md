@@ -2,6 +2,10 @@
 
 深度強化學習作業一：使用 Flask 建構網格世界 (Grid World) 的策略評估與價值迭代系統。
 
+### 🌐 線上 Demo
+
+**https://albertiscool.github.io/hw1/**
+
 ---
 
 ## 📋 作業內容
@@ -29,10 +33,17 @@
 | 後端 | Python / Flask |
 | 前端 | HTML / CSS / JavaScript |
 | 通訊 | AJAX (fetch API) |
+| 部署 | GitHub Pages（純前端版） |
 
 ---
 
 ## 🚀 安裝與執行
+
+### 方式一：線上使用（GitHub Pages）
+
+直接開啟 **https://albertiscool.github.io/hw1/**，無需安裝。
+
+### 方式二：本地執行（Flask）
 
 ```bash
 # 安裝 Flask
@@ -98,19 +109,11 @@ V(s) = max_a [R(s,a) + γ · V(s')]
 
 ![Policy Evaluation](screenshots/demo2_pe.png)
 
-- 靠近終點的格子價值較高（接近 0）
-- 遠離終點的格子價值較低（接近 -10）
-- 每個格子的箭頭代表隨機生成的策略方向
-
 ### 3. 價值迭代與最佳路徑 (HW1-3)
 
 使用 Value Iteration 找到最佳策略，並標示最佳路徑：
 
 ![Value Iteration](screenshots/demo3_vi.png)
-
-- **Value Matrix (Optimal)**：最佳價值函數，值從起點遞增至終點
-- **Policy Matrix (Optimal)**：所有箭頭指向最佳路徑方向
-- 黃色標示的格子為**最佳路徑**
 
 ---
 
@@ -118,13 +121,15 @@ V(s) = max_a [R(s,a) + γ · V(s')]
 
 ```
 hw1/
+├── index.html              # GitHub Pages 靜態版（純 JS 運算）
 ├── app.py                  # Flask 後端（PE + VI + 策略萃取）
 ├── templates/
-│   └── index.html          # 前端介面
+│   └── index.html          # Flask 前端介面
 ├── screenshots/            # Demo 截圖
 │   ├── demo1_grid.png
 │   ├── demo2_pe.png
 │   └── demo3_vi.png
+├── conversation_log.pdf    # AI 輔助開發對話記錄
 ├── .gitignore
 └── README.md
 ```
