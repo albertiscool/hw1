@@ -41,7 +41,7 @@
 
 ### 方式一：線上使用（GitHub Pages）
 
-直接開啟 **https://albertiscool.github.io/hw1/**，無需安裝。
+直接開啟 **https://albertiscool.github.io/hw1/**
 
 ### 方式二：本地執行（Flask）
 
