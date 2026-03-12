@@ -8,14 +8,16 @@ app = Flask(__name__)
 def index():
     return render_template('index.html')
 
+
 @app.route('/evaluate', methods=['POST'])
 def evaluate():
+    """HW1-2: 隨機策略生成 + 策略評估 (Policy Evaluation)"""
     data = request.json
     n = data['n']
     start = tuple(data['start'])
     end = tuple(data['end'])
     obstacles = [tuple(obs) for obs in data['obstacles']]
-    
+
     # 隨機生成策略 (Random Policy)
     actions = ['U', 'D', 'L', 'R']
     policy = {}
@@ -25,52 +27,187 @@ def evaluate():
                 policy[(r, c)] = None
             else:
                 policy[(r, c)] = random.choice(actions)
-                
-    # 策略評估 (Policy Evaluation)
-    V = { (r, c): 0.0 for r in range(n) for c in range(n) }
-    
-    gamma = 0.9       # 折扣因子
-    reward_step = -1   # 每步的獎勵
-    reward_goal = 10   # 到達終點的獎勵
-    theta = 1e-6       # 收斂閾值
-    
+
+    # 策略評估 (Policy Evaluation) — Bellman Equation
+    V = {(r, c): 0.0 for r in range(n) for c in range(n)}
+
+    gamma = 0.9
+    reward_step = -1
+    reward_goal = 10
+    theta = 1e-6
     max_iterations = 1000
-    
+
     for iteration in range(max_iterations):
         delta = 0
         V_new = V.copy()
         for r in range(n):
             for c in range(n):
                 state = (r, c)
-                # 終點和障礙物不更新
                 if state == end or state in obstacles:
                     continue
-                
+
                 a = policy[state]
-                next_r, next_c = r, c
-                if a == 'U': next_r -= 1
-                elif a == 'D': next_r += 1
-                elif a == 'L': next_c -= 1
-                elif a == 'R': next_c += 1
-                
-                next_state = (next_r, next_c)
-                
-                # 檢查邊界和障礙物：如果超出邊界或撞到障礙物，則留在原處
-                if next_r < 0 or next_r >= n or next_c < 0 or next_c >= n or next_state in obstacles:
+                nr, nc = get_next(r, c, a)
+                next_state = (nr, nc)
+
+                # 邊界 / 障礙物檢查
+                if nr < 0 or nr >= n or nc < 0 or nc >= n or next_state in obstacles:
                     next_state = state
-                    
-                # 計算獎勵
+
                 cur_reward = reward_goal if next_state == end else reward_step
-                
+
                 v_old = V[state]
                 V_new[state] = cur_reward + gamma * V[next_state]
                 delta = max(delta, abs(v_old - V_new[state]))
-                
+
         V = V_new
         if delta < theta:
             break
-            
-    # 格式化矩陣資料給前端
+
+    # 格式化輸出
+    v_matrix, p_matrix = format_matrices(n, V, policy, start, end, obstacles)
+
+    return jsonify({
+        'v_matrix': v_matrix,
+        'p_matrix': p_matrix,
+        'iterations': iteration + 1,
+        'gamma': gamma
+    })
+
+
+@app.route('/value_iteration', methods=['POST'])
+def value_iteration():
+    """HW1-3: 價值迭代 (Value Iteration) + 策略萃取 (Policy Extraction)"""
+    data = request.json
+    n = data['n']
+    start = tuple(data['start'])
+    end = tuple(data['end'])
+    obstacles = [tuple(obs) for obs in data['obstacles']]
+
+    actions = ['U', 'D', 'L', 'R']
+
+    # 價值迭代 (Value Iteration) — 使用 Max 運算
+    V = {(r, c): 0.0 for r in range(n) for c in range(n)}
+
+    gamma = 0.9
+    reward_step = -1
+    reward_goal = 10
+    theta = 1e-6
+    max_iterations = 1000
+
+    for iteration in range(max_iterations):
+        delta = 0
+        V_new = V.copy()
+        for r in range(n):
+            for c in range(n):
+                state = (r, c)
+                if state == end or state in obstacles:
+                    continue
+
+                # 對所有動作取 Max（與 PE 的核心差異）
+                max_val = float('-inf')
+                for a in actions:
+                    nr, nc = get_next(r, c, a)
+                    next_state = (nr, nc)
+
+                    if nr < 0 or nr >= n or nc < 0 or nc >= n or next_state in obstacles:
+                        next_state = state
+
+                    cur_reward = reward_goal if next_state == end else reward_step
+                    val = cur_reward + gamma * V[next_state]
+
+                    if val > max_val:
+                        max_val = val
+
+                v_old = V[state]
+                V_new[state] = max_val
+                delta = max(delta, abs(v_old - V_new[state]))
+
+        V = V_new
+        if delta < theta:
+            break
+
+    # 策略萃取 (Policy Extraction) — 使用 Argmax 運算
+    policy = {}
+    for r in range(n):
+        for c in range(n):
+            state = (r, c)
+            if state == end or state in obstacles:
+                policy[state] = None
+                continue
+
+            best_action = None
+            best_val = float('-inf')
+            for a in actions:
+                nr, nc = get_next(r, c, a)
+                next_state = (nr, nc)
+
+                if nr < 0 or nr >= n or nc < 0 or nc >= n or next_state in obstacles:
+                    next_state = state
+
+                cur_reward = reward_goal if next_state == end else reward_step
+                val = cur_reward + gamma * V[next_state]
+
+                if val > best_val:
+                    best_val = val
+                    best_action = a
+
+            policy[state] = best_action
+
+    # 最佳路徑萃取
+    path = extract_path(start, end, policy, obstacles, n)
+
+    # 格式化輸出
+    v_matrix, p_matrix = format_matrices(n, V, policy, start, end, obstacles)
+
+    return jsonify({
+        'v_matrix': v_matrix,
+        'p_matrix': p_matrix,
+        'iterations': iteration + 1,
+        'gamma': gamma,
+        'path': path
+    })
+
+
+def get_next(r, c, action):
+    """根據動作取得下一個座標"""
+    if action == 'U': return r - 1, c
+    elif action == 'D': return r + 1, c
+    elif action == 'L': return r, c - 1
+    elif action == 'R': return r, c + 1
+    return r, c
+
+
+def extract_path(start, end, policy, obstacles, n):
+    """從起點沿著策略走到終點，萃取最佳路徑"""
+    path = [list(start)]
+    current = start
+    visited = set()
+    max_steps = n * n
+
+    while current != end and len(path) < max_steps:
+        if current in visited:
+            break
+        visited.add(current)
+
+        a = policy.get(current)
+        if a is None:
+            break
+
+        nr, nc = get_next(current[0], current[1], a)
+        next_state = (nr, nc)
+
+        if nr < 0 or nr >= n or nc < 0 or nc >= n or next_state in obstacles:
+            break
+
+        current = next_state
+        path.append(list(current))
+
+    return path
+
+
+def format_matrices(n, V, policy, start, end, obstacles):
+    """格式化 Value Matrix 和 Policy Matrix"""
     v_matrix = []
     p_matrix = []
     for r in range(n):
@@ -91,13 +228,9 @@ def evaluate():
                 p_row.append(policy[(r, c)])
         v_matrix.append(v_row)
         p_matrix.append(p_row)
-        
-    return jsonify({
-        'v_matrix': v_matrix,
-        'p_matrix': p_matrix,
-        'iterations': iteration + 1,
-        'gamma': gamma
-    })
+
+    return v_matrix, p_matrix
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

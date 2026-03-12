@@ -3,718 +3,363 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HW1 - 網格地圖 & 策略評估</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <title>HW1 Grid Map & Policy Evaluation</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
         body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-            min-height: 100vh;
-            color: #e0e0e0;
-            padding: 30px 20px;
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            color: #333;
+            background: #fff;
         }
+        h2 { margin-top: 30px; }
+        h3 { margin-top: 20px; }
+        hr { margin: 20px 0; border: none; border-top: 1px solid #aaa; }
 
-        .container {
-            max-width: 1100px;
-            margin: 0 auto;
-        }
-
-        /* ─── Header ─── */
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
-        }
-        .header h1 {
-            font-size: 2.2rem;
-            font-weight: 800;
-            background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 8px;
-            letter-spacing: -0.5px;
-        }
-        .header p {
-            font-size: 0.95rem;
-            color: #8e8ea0;
-        }
-
-        /* ─── Cards ─── */
-        .card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 16px;
-            padding: 30px;
-            margin-bottom: 24px;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        .card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 32px rgba(102, 126, 234, 0.15);
-        }
-        .card-title {
-            font-size: 1.15rem;
-            font-weight: 700;
-            color: #c4b5fd;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .card-title .icon {
-            font-size: 1.3rem;
-        }
-
-        /* ─── Controls ─── */
-        .controls {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            flex-wrap: wrap;
-        }
-        .controls label {
-            font-size: 0.95rem;
-            font-weight: 500;
-            color: #a5b4fc;
-        }
+        /* 控制列 */
+        .controls { margin-bottom: 10px; }
         .controls input[type="number"] {
-            width: 70px;
-            padding: 10px 12px;
-            border: 2px solid rgba(167, 139, 250, 0.3);
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.06);
-            color: #e0e0e0;
-            font-size: 1rem;
-            font-family: 'Inter', sans-serif;
-            font-weight: 600;
-            text-align: center;
-            outline: none;
-            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            width: 50px;
+            padding: 3px 5px;
+            font-size: 14px;
         }
-        .controls input[type="number"]:focus {
-            border-color: #a78bfa;
-            box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.2);
-        }
-        
-        .btn {
-            padding: 10px 22px;
-            border: none;
-            border-radius: 10px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            font-family: 'Inter', sans-serif;
+        button {
+            padding: 4px 14px;
+            font-size: 14px;
             cursor: pointer;
-            transition: all 0.25s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-        }
-        .btn-primary:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
-        }
-        .btn-primary:active {
-            transform: translateY(0);
-        }
-        .btn-evaluate {
-            background: linear-gradient(135deg, #00b09b, #96c93d);
-            color: white;
-            box-shadow: 0 4px 15px rgba(0, 176, 155, 0.4);
-            padding: 12px 30px;
-            font-size: 1rem;
-            margin-top: 20px;
-        }
-        .btn-evaluate:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 20px rgba(0, 176, 155, 0.5);
-        }
-        .btn-evaluate:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
         }
 
-        /* ─── Grid Section ─── */
-        .grid-section {
-            display: none;
-        }
-        .grid-section.active {
-            display: block;
-            animation: fadeIn 0.4s ease;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .grid-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-        .grid-title {
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: #e0e0e0;
-        }
-
-        .status-badge {
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 0.82rem;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .status-badge.info {
-            background: rgba(99, 102, 241, 0.2);
-            color: #a5b4fc;
-            border: 1px solid rgba(99, 102, 241, 0.3);
-        }
-        .status-badge.success {
-            background: rgba(34, 197, 94, 0.15);
-            color: #86efac;
-            border: 1px solid rgba(34, 197, 94, 0.3);
-        }
-        .status-badge .dot {
-            width: 7px; height: 7px;
-            border-radius: 50%;
-            display: inline-block;
-        }
-        .status-badge.info .dot { background: #818cf8; }
-        .status-badge.success .dot { background: #4ade80; }
-
-        .legend {
-            display: flex;
-            gap: 18px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 0.82rem;
-            color: #9ca3af;
-        }
-        .legend-color {
-            width: 14px; height: 14px;
-            border-radius: 4px;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        .legend-color.green { background: #22c55e; }
-        .legend-color.red { background: #ef4444; }
-        .legend-color.gray { background: #6b7280; }
-
-        /* ─── Grid Cells ─── */
-        .grid-container {
-            display: inline-block;
-        }
+        /* 網格 */
         .grid-row { display: flex; }
         .grid-cell {
-            width: 52px; height: 52px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            width: 45px; height: 45px;
+            border: 1px solid #333;
+            display: flex; align-items: center; justify-content: center;
             cursor: pointer;
-            font-size: 0.85rem;
-            font-weight: 600;
+            font-size: 14px;
             user-select: none;
-            transition: all 0.15s ease;
-            background: rgba(255, 255, 255, 0.04);
-            color: rgba(255, 255, 255, 0.5);
-            position: relative;
+            margin-right: -1px; margin-bottom: -1px;
         }
-        .grid-cell:hover:not(.start):not(.end):not(.obstacle) {
-            background: rgba(167, 139, 250, 0.15);
-            border-color: rgba(167, 139, 250, 0.4);
-        }
-        .grid-cell.start {
-            background: linear-gradient(135deg, #22c55e, #16a34a);
-            color: white;
-            border-color: #22c55e;
-            font-size: 0.7rem;
-            font-weight: 700;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-            box-shadow: 0 0 12px rgba(34, 197, 94, 0.3);
-        }
-        .grid-cell.end {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
-            color: white;
-            border-color: #ef4444;
-            font-size: 0.7rem;
-            font-weight: 700;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-            box-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
-        }
-        .grid-cell.obstacle {
-            background: linear-gradient(135deg, #4b5563, #374151);
-            color: rgba(255,255,255, 0.3);
-            border-color: #6b7280;
-            cursor: pointer;
-        }
-        .grid-cell.obstacle:hover {
-            background: linear-gradient(135deg, #6b7280, #4b5563);
-        }
+        .grid-cell:hover { background-color: #eee; }
+        .grid-cell.start { background-color: #28a745; color: white; }
+        .grid-cell.end { background-color: #dc3545; color: white; }
+        .grid-cell.obstacle { background-color: #999; color: #999; }
+        .grid-cell.path-cell { background-color: #ffc107; }
 
-        /* ─── Result Matrices ─── */
-        .result-section {
-            display: none;
-            animation: fadeIn 0.5s ease;
-        }
-        .result-section.active { display: block; }
+        /* 結果矩陣 */
+        .result-container { display: flex; gap: 40px; margin-top: 20px; flex-wrap: wrap; }
+        .matrix-wrapper { display: flex; flex-direction: column; align-items: flex-start; }
+        .matrix-title { font-weight: bold; margin-bottom: 8px; font-size: 16px; }
 
-        .result-flex {
-            display: flex;
-            gap: 30px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-        .matrix-card {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 14px;
-            padding: 22px;
-            flex: 1;
-            min-width: 300px;
-        }
-        .matrix-title {
-            font-size: 1rem;
-            font-weight: 700;
-            color: #c4b5fd;
-            margin-bottom: 16px;
-            text-align: center;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .result-grid {
-            display: inline-flex;
-            flex-direction: column;
-            border: 2px solid rgba(167, 139, 250, 0.25);
-            border-radius: 8px;
-            overflow: hidden;
-            margin: 0 auto;
-        }
-        .matrix-card .grid-container {
-            display: flex;
-            justify-content: center;
-        }
         .result-cell {
-            width: 58px; height: 50px;
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.78rem;
-            font-weight: 600;
-            background: rgba(255, 255, 255, 0.03);
-            color: #e2e8f0;
-            position: relative;
+            width: 50px; height: 50px;
+            border: 1px solid #999;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px;
+            margin-right: -1px; margin-bottom: -1px;
+            background-color: #f5f5f5;
+            font-weight: bold;
         }
-        .result-cell.obstacle {
-            background: linear-gradient(135deg, #4b5563, #374151);
-            color: rgba(255,255,255,0.2);
-        }
-        .result-cell.end-cell {
-            background: linear-gradient(135deg, #ef4444, #dc2626);
-            color: white;
-            font-weight: 700;
-        }
-        .result-cell.start-cell {
-            background: linear-gradient(135deg, #22c55e, #16a34a);
-            color: white;
-            font-weight: 700;
-        }
-        .result-cell .arrow {
-            font-size: 1.4rem;
-            line-height: 1;
-        }
-        .result-cell.positive { color: #86efac; }
-        .result-cell.negative { color: #fca5a5; }
+        .result-cell.obstacle-cell { background-color: #999; color: #fff; }
+        .result-cell.end-cell { background-color: #dc3545; color: #fff; }
+        .result-cell.start-cell { background-color: #28a745; color: #fff; }
+        .result-cell.path-highlight { background-color: #ffc107; }
 
-        /* ─── Info Bar ─── */
-        .info-bar {
-            display: flex;
-            gap: 20px;
-            margin-top: 16px;
-            flex-wrap: wrap;
-        }
-        .info-chip {
-            padding: 6px 14px;
-            border-radius: 8px;
-            background: rgba(99, 102, 241, 0.1);
-            border: 1px solid rgba(99, 102, 241, 0.2);
-            font-size: 0.8rem;
-            color: #a5b4fc;
-        }
-        .info-chip strong {
-            color: #c4b5fd;
-        }
+        .arrow { font-size: 20px; }
 
-        /* ─── Loading ─── */
-        .spinner {
-            display: inline-block;
-            width: 16px; height: 16px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-top-color: white;
-            border-radius: 50%;
-            animation: spin 0.6s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* ─── Responsive ─── */
-        @media (max-width: 600px) {
-            .grid-cell { width: 40px; height: 40px; font-size: 0.75rem; }
-            .result-cell { width: 46px; height: 42px; font-size: 0.7rem; }
-            .header h1 { font-size: 1.6rem; }
-            .result-flex { flex-direction: column; }
-        }
+        #info-text { font-weight: bold; color: #0056b3; margin-top: 10px; }
+        .legend { font-size: 14px; color: #555; margin-bottom: 5px; }
+        .section-btns { margin-top: 15px; }
+        .section-btns button { margin-right: 8px; }
+        .info-bar { margin-top: 12px; font-size: 13px; color: #555; }
+        .info-bar span { margin-right: 20px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <div class="header">
-            <h1>📐 HW1 - 網格地圖 & 策略評估</h1>
-            <p>Grid Map Development & Policy Evaluation</p>
-        </div>
+    <h2>作業內容</h2>
 
-        <!-- Step 1: Generate Grid -->
-        <div class="card" id="card-generate">
-            <div class="card-title">
-                <span class="icon">🔧</span>HW1-1：Generate n × n Square
-            </div>
-            <div class="controls">
-                <label for="n-input">Enter a number between 5 and 10：</label>
-                <input type="number" id="n-input" min="5" max="10" value="5">
-                <button class="btn btn-primary" onclick="generateSquare()">
-                    ⚡ Generate Square
-                </button>
-            </div>
-        </div>
+    <!-- ===== HW1-1 ===== -->
+    <h3>HW1-1: 網格地圖開發</h3>
 
-        <!-- Step 2: Grid Interaction -->
-        <div class="card grid-section" id="card-grid">
-            <div class="grid-header">
-                <div class="grid-title" id="grid-title"></div>
-                <div class="status-badge info" id="status-badge">
-                    <span class="dot"></span>
-                    <span id="status-text">等待操作</span>
-                </div>
-            </div>
-            <div class="legend">
-                <div class="legend-item">
-                    <div class="legend-color green"></div>
-                    <span>起點 (Start)</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color red"></div>
-                    <span>終點 (End)</span>
-                </div>
-                <div class="legend-item">
-                    <div class="legend-color gray"></div>
-                    <span>障礙物 (Obstacle)</span>
-                </div>
-            </div>
-            <div class="grid-container" id="grid-container"></div>
-            <button class="btn btn-evaluate" id="evaluate-btn" onclick="evaluatePolicy()" disabled>
-                🚀 隨機產生策略 & 評估 (Evaluate Policy)
-            </button>
-        </div>
+    <div class="controls">
+        <label>Generate n x n Square</label><br><br>
+        <label for="n-input">Enter a number between 5 and 10: </label>
+        <input type="number" id="n-input" min="5" max="10" value="5">
+        <button onclick="generateSquare()">Generate Square</button>
+    </div>
 
-        <!-- Step 3: Result Matrices -->
-        <div class="card result-section" id="card-result">
-            <div class="card-title">
-                <span class="icon">📊</span>HW1-2：策略顯示與價值評估
-            </div>
-            <div class="result-flex">
-                <div class="matrix-card">
-                    <div class="matrix-title">📋 Value Matrix V(s)</div>
-                    <div class="grid-container">
-                        <div id="value-matrix" class="result-grid"></div>
-                    </div>
-                </div>
-                <div class="matrix-card">
-                    <div class="matrix-title">🧭 Policy Matrix π(s)</div>
-                    <div class="grid-container">
-                        <div id="policy-matrix" class="result-grid"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="info-bar" id="info-bar"></div>
+    <div id="grid-section" style="display:none;">
+        <h3 id="grid-title"></h3>
+        <p class="legend">1. Click on a cell to set up the start grid as <span style="color:#28a745;font-weight:bold;">green</span> or the end grid as <span style="color:#dc3545;font-weight:bold;">red</span>. Obstacles will be <span style="color:#999;font-weight:bold;">gray</span>.</p>
+        <div id="grid-container"></div>
+        <p id="info-text"></p>
+
+        <div class="section-btns">
+            <button id="evaluate-btn" onclick="evaluatePolicy()" style="display:none;">隨機策略 + 策略評估 (HW1-2)</button>
+            <button id="vi-btn" onclick="runValueIteration()" style="display:none;">價值迭代 + 策略萃取 (HW1-3)</button>
         </div>
     </div>
 
-    <script>
-        let n = 0;
-        let start = null;
-        let end = null;
-        let obstacles = [];
-        let phase = 'idle'; // idle, set-start, set-end, set-obstacles, done
-        let maxObstacles = 0;
+    <hr>
 
-        function generateSquare() {
-            n = parseInt(document.getElementById('n-input').value);
-            if (isNaN(n) || n < 5 || n > 10) {
-                alert('請輸入 5 到 10 之間的數字！');
-                return;
-            }
+    <!-- ===== HW1-2 結果 ===== -->
+    <div id="pe-result" style="display:none;">
+        <h3>HW1-2: 策略顯示與價值評估 (Policy Evaluation)</h3>
+        <div class="result-container">
+            <div class="matrix-wrapper">
+                <div class="matrix-title">Value Matrix</div>
+                <div id="pe-value-matrix"></div>
+            </div>
+            <div class="matrix-wrapper">
+                <div class="matrix-title">Policy Matrix</div>
+                <div id="pe-policy-matrix"></div>
+            </div>
+        </div>
+        <div class="info-bar" id="pe-info"></div>
+    </div>
 
-            start = null;
-            end = null;
-            obstacles = [];
-            maxObstacles = n - 2;
-            phase = 'set-start';
+    <!-- ===== HW1-3 結果 ===== -->
+    <div id="vi-result" style="display:none;">
+        <h3>HW1-3: 價值迭代與最佳路徑 (Value Iteration)</h3>
+        <div class="result-container">
+            <div class="matrix-wrapper">
+                <div class="matrix-title">Value Matrix (Optimal)</div>
+                <div id="vi-value-matrix"></div>
+            </div>
+            <div class="matrix-wrapper">
+                <div class="matrix-title">Policy Matrix (Optimal)</div>
+                <div id="vi-policy-matrix"></div>
+            </div>
+        </div>
+        <div class="info-bar" id="vi-info"></div>
+    </div>
 
-            // Update UI
-            const gridSection = document.getElementById('card-grid');
-            gridSection.classList.add('active');
-            document.getElementById('card-result').classList.remove('active');
-            document.getElementById('grid-title').innerText = `${n} × ${n} Square：`;
-            updateStatus();
+<script>
+    let n = 0;
+    let start = null;
+    let end = null;
+    let obstacles = [];
+    let clicks = 0;
+    let maxObstacles = 0;
 
-            // Build grid
-            const container = document.getElementById('grid-container');
-            container.innerHTML = '';
-            let cellNumber = 1;
-            for (let r = 0; r < n; r++) {
-                const rowDiv = document.createElement('div');
-                rowDiv.className = 'grid-row';
-                for (let c = 0; c < n; c++) {
-                    const cellDiv = document.createElement('div');
-                    cellDiv.className = 'grid-cell';
-                    cellDiv.id = `cell-${r}-${c}`;
-                    cellDiv.dataset.r = r;
-                    cellDiv.dataset.c = c;
-                    cellDiv.innerText = cellNumber++;
-                    cellDiv.onclick = () => handleCellClick(cellDiv, r, c);
-                    rowDiv.appendChild(cellDiv);
-                }
-                container.appendChild(rowDiv);
-            }
-
-            // Disable evaluate button
-            const evalBtn = document.getElementById('evaluate-btn');
-            evalBtn.disabled = true;
+    /* ─── 生成網格 ─── */
+    function generateSquare() {
+        n = parseInt(document.getElementById('n-input').value);
+        if (isNaN(n) || n < 5 || n > 10) {
+            alert('請輸入 5 到 10 之間的數字！');
+            return;
         }
 
-        function updateStatus() {
-            const badge = document.getElementById('status-badge');
-            const text = document.getElementById('status-text');
+        start = null; end = null; obstacles = []; clicks = 0;
+        maxObstacles = n - 2;
 
-            if (phase === 'set-start') {
-                badge.className = 'status-badge info';
-                text.innerText = 'Step 1：請點擊格子設定起點 (Start)';
-            } else if (phase === 'set-end') {
-                badge.className = 'status-badge info';
-                text.innerText = 'Step 2：請點擊格子設定終點 (End)';
-            } else if (phase === 'set-obstacles') {
-                const remaining = maxObstacles - obstacles.length;
-                badge.className = 'status-badge info';
-                text.innerText = `Step 3：請點擊設定障礙物，還需 ${remaining} 個（可點擊取消）`;
-            } else if (phase === 'done') {
-                badge.className = 'status-badge success';
-                text.innerText = '✅ 設定完成！可點擊下方按鈕進行評估';
+        document.getElementById('grid-section').style.display = 'block';
+        document.getElementById('grid-title').innerText = n + ' x ' + n + ' Square:';
+        document.getElementById('evaluate-btn').style.display = 'none';
+        document.getElementById('vi-btn').style.display = 'none';
+        document.getElementById('pe-result').style.display = 'none';
+        document.getElementById('vi-result').style.display = 'none';
+        updateInfo();
+
+        const container = document.getElementById('grid-container');
+        container.innerHTML = '';
+        let num = 1;
+        for (let r = 0; r < n; r++) {
+            const row = document.createElement('div');
+            row.className = 'grid-row';
+            for (let c = 0; c < n; c++) {
+                const cell = document.createElement('div');
+                cell.className = 'grid-cell';
+                cell.id = 'cell-' + r + '-' + c;
+                cell.dataset.r = r;
+                cell.dataset.c = c;
+                cell.innerText = num++;
+                cell.onclick = function() { handleClick(cell, r, c); };
+                row.appendChild(cell);
             }
+            container.appendChild(row);
         }
+    }
 
-        function handleCellClick(cell, r, c) {
-            if (phase === 'idle') return;
-
-            // --- Set Start ---
-            if (phase === 'set-start') {
-                start = [r, c];
-                cell.classList.add('start');
-                cell.innerText = 'S';
-                phase = 'set-end';
-                updateStatus();
-                return;
-            }
-
-            // --- Set End ---
-            if (phase === 'set-end') {
-                if (cell.classList.contains('start')) return; // 不能和起點重疊
-                end = [r, c];
-                cell.classList.add('end');
-                cell.innerText = 'E';
-                phase = 'set-obstacles';
-                updateStatus();
-                return;
-            }
-
-            // --- Set Obstacles ---
-            if (phase === 'set-obstacles' || phase === 'done') {
-                if (cell.classList.contains('start') || cell.classList.contains('end')) return;
-
-                // Toggle obstacle
-                if (cell.classList.contains('obstacle')) {
-                    // Remove obstacle
-                    cell.classList.remove('obstacle');
-                    const cellNum = r * n + c + 1;
-                    cell.innerText = cellNum;
-                    obstacles = obstacles.filter(o => !(o[0] === r && o[1] === c));
-                    
-                    if (phase === 'done') {
-                        phase = 'set-obstacles';
-                    }
-                    updateStatus();
-                    checkCompletion();
-                    return;
-                }
-
-                // Add obstacle
-                if (obstacles.length < maxObstacles) {
-                    obstacles.push([r, c]);
-                    cell.classList.add('obstacle');
-                    cell.innerText = '■';
-                    checkCompletion();
-                    updateStatus();
-                }
-            }
+    /* ─── 狀態提示 ─── */
+    function updateInfo() {
+        const info = document.getElementById('info-text');
+        if (clicks === 0) {
+            info.innerText = 'Step 1: 點擊設定 Start（綠色）';
+        } else if (clicks === 1) {
+            info.innerText = 'Step 2: 點擊設定 End（紅色）';
+        } else if (obstacles.length < maxObstacles) {
+            info.innerText = 'Step 3: 點擊設定障礙物（灰色），還需 ' + (maxObstacles - obstacles.length) + ' 個（可再次點擊取消）';
+        } else {
+            info.innerText = '設定完成！請點擊下方按鈕進行評估。';
         }
+    }
 
-        function checkCompletion() {
-            const evalBtn = document.getElementById('evaluate-btn');
-            if (obstacles.length === maxObstacles) {
-                phase = 'done';
-                evalBtn.disabled = false;
-                updateStatus();
+    /* ─── 點擊處理 ─── */
+    function handleClick(cell, r, c) {
+        // 設定 Start
+        if (clicks === 0) {
+            start = [r, c];
+            cell.classList.add('start');
+            cell.innerText = 'S';
+            clicks++;
+            updateInfo();
+            return;
+        }
+        // 設定 End
+        if (clicks === 1) {
+            if (cell.classList.contains('start')) return;
+            end = [r, c];
+            cell.classList.add('end');
+            cell.innerText = 'E';
+            clicks++;
+            updateInfo();
+            return;
+        }
+        // 障礙物（可 toggle）
+        if (clicks >= 2) {
+            if (cell.classList.contains('start') || cell.classList.contains('end')) return;
+
+            if (cell.classList.contains('obstacle')) {
+                cell.classList.remove('obstacle');
+                cell.innerText = r * n + c + 1;
+                obstacles = obstacles.filter(function(o) { return !(o[0] === r && o[1] === c); });
+            } else if (obstacles.length < maxObstacles) {
+                cell.classList.add('obstacle');
+                cell.innerText = '';
+                obstacles.push([r, c]);
+            }
+
+            if (obstacles.length >= maxObstacles) {
+                document.getElementById('evaluate-btn').style.display = 'inline-block';
+                document.getElementById('vi-btn').style.display = 'inline-block';
             } else {
-                evalBtn.disabled = true;
+                document.getElementById('evaluate-btn').style.display = 'none';
+                document.getElementById('vi-btn').style.display = 'none';
             }
+            updateInfo();
         }
+    }
 
-        async function evaluatePolicy() {
-            if (phase !== 'done') return;
+    /* ─── HW1-2: 策略評估 ─── */
+    async function evaluatePolicy() {
+        document.getElementById('evaluate-btn').innerText = '計算中...';
+        try {
+            const res = await fetch('/evaluate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ n: n, start: start, end: end, obstacles: obstacles })
+            });
+            const data = await res.json();
 
-            const evalBtn = document.getElementById('evaluate-btn');
-            evalBtn.innerHTML = '<span class="spinner"></span> 評估中...';
-            evalBtn.disabled = true;
-
-            const reqData = { n, start, end, obstacles };
-
-            try {
-                const response = await fetch('/evaluate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(reqData)
-                });
-                const data = await response.json();
-
-                renderValueMatrix(data.v_matrix);
-                renderPolicyMatrix(data.p_matrix);
-                renderInfoBar(data);
-
-                document.getElementById('card-result').classList.add('active');
-                evalBtn.innerHTML = '🔄 重新隨機產生策略 & 評估';
-                evalBtn.disabled = false;
-
-                // Scroll to result
-                document.getElementById('card-result').scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-            } catch (err) {
-                console.error(err);
-                alert('評估時發生錯誤！');
-                evalBtn.innerHTML = '🚀 隨機產生策略 & 評估 (Evaluate Policy)';
-                evalBtn.disabled = false;
-            }
+            renderMatrix('pe-value-matrix', data.v_matrix, 'value', []);
+            renderMatrix('pe-policy-matrix', data.p_matrix, 'policy', []);
+            document.getElementById('pe-info').innerHTML =
+                '<span><b>γ = ' + data.gamma + '</b></span>' +
+                '<span>收斂迭代: ' + data.iterations + ' 次</span>';
+            document.getElementById('pe-result').style.display = 'block';
+            document.getElementById('evaluate-btn').innerText = '重新隨機策略 + 策略評估 (HW1-2)';
+        } catch(e) {
+            alert('評估失敗');
+            document.getElementById('evaluate-btn').innerText = '隨機策略 + 策略評估 (HW1-2)';
         }
+    }
 
-        function renderValueMatrix(matrix) {
-            const container = document.getElementById('value-matrix');
-            container.innerHTML = '';
+    /* ─── HW1-3: 價值迭代 ─── */
+    async function runValueIteration() {
+        document.getElementById('vi-btn').innerText = '計算中...';
+        try {
+            const res = await fetch('/value_iteration', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ n: n, start: start, end: end, obstacles: obstacles })
+            });
+            const data = await res.json();
+            const path = data.path || [];
 
-            for (let r = 0; r < n; r++) {
-                const rowDiv = document.createElement('div');
-                rowDiv.className = 'grid-row';
-                for (let c = 0; c < n; c++) {
-                    const cellDiv = document.createElement('div');
-                    cellDiv.className = 'result-cell';
-                    const val = matrix[r][c];
+            renderMatrix('vi-value-matrix', data.v_matrix, 'value', path);
+            renderMatrix('vi-policy-matrix', data.p_matrix, 'policy', path);
 
-                    if (val === 'OBSTACLE') {
-                        cellDiv.classList.add('obstacle');
-                        cellDiv.innerText = '■';
-                    } else if (start && r === start[0] && c === start[1]) {
-                        cellDiv.classList.add('start-cell');
-                        cellDiv.innerText = parseFloat(val).toFixed(2);
-                    } else if (end && r === end[0] && c === end[1]) {
-                        cellDiv.classList.add('end-cell');
-                        cellDiv.innerText = '0.00';
-                    } else {
-                        const numVal = parseFloat(val);
-                        cellDiv.innerText = numVal.toFixed(2);
-                        if (numVal > 0) cellDiv.classList.add('positive');
-                        else if (numVal < 0) cellDiv.classList.add('negative');
-                    }
-
-                    rowDiv.appendChild(cellDiv);
+            // 在主網格上標示路徑
+            clearPathHighlight();
+            for (let i = 0; i < path.length; i++) {
+                const pr = path[i][0], pc = path[i][1];
+                const el = document.getElementById('cell-' + pr + '-' + pc);
+                if (el && !el.classList.contains('start') && !el.classList.contains('end') && !el.classList.contains('obstacle')) {
+                    el.classList.add('path-cell');
                 }
-                container.appendChild(rowDiv);
             }
+
+            document.getElementById('vi-info').innerHTML =
+                '<span><b>γ = ' + data.gamma + '</b></span>' +
+                '<span>收斂迭代: ' + data.iterations + ' 次</span>' +
+                '<span>最佳路徑長度: ' + path.length + ' 步</span>';
+            document.getElementById('vi-result').style.display = 'block';
+            document.getElementById('vi-btn').innerText = '重新價值迭代 + 策略萃取 (HW1-3)';
+        } catch(e) {
+            alert('價值迭代失敗');
+            document.getElementById('vi-btn').innerText = '價值迭代 + 策略萃取 (HW1-3)';
+        }
+    }
+
+    function clearPathHighlight() {
+        const cells = document.querySelectorAll('.grid-cell.path-cell');
+        cells.forEach(function(c) { c.classList.remove('path-cell'); });
+    }
+
+    /* ─── 渲染結果矩陣 ─── */
+    function renderMatrix(elementId, matrix, type, path) {
+        const container = document.getElementById(elementId);
+        container.innerHTML = '';
+
+        // 建立 path set 方便查找
+        const pathSet = {};
+        for (let i = 0; i < path.length; i++) {
+            pathSet[path[i][0] + ',' + path[i][1]] = true;
         }
 
-        function renderPolicyMatrix(matrix) {
-            const container = document.getElementById('policy-matrix');
-            container.innerHTML = '';
+        const arrowMap = { 'U': '↑', 'D': '↓', 'L': '←', 'R': '→' };
 
-            const arrowMap = {
-                'U': '↑', 'D': '↓', 'L': '←', 'R': '→'
-            };
+        for (let r = 0; r < n; r++) {
+            const row = document.createElement('div');
+            row.className = 'grid-row';
+            for (let c = 0; c < n; c++) {
+                const cell = document.createElement('div');
+                cell.className = 'result-cell';
+                const val = matrix[r][c];
+                const isPath = pathSet[r + ',' + c];
 
-            for (let r = 0; r < n; r++) {
-                const rowDiv = document.createElement('div');
-                rowDiv.className = 'grid-row';
-                for (let c = 0; c < n; c++) {
-                    const cellDiv = document.createElement('div');
-                    cellDiv.className = 'result-cell';
-                    const val = matrix[r][c];
-
-                    if (val === 'OBSTACLE') {
-                        cellDiv.classList.add('obstacle');
-                        cellDiv.innerText = '■';
-                    } else if (val === 'END') {
-                        cellDiv.classList.add('end-cell');
-                        cellDiv.innerText = 'END';
-                    } else if (val && val.startsWith('START_')) {
-                        cellDiv.classList.add('start-cell');
-                        const action = val.replace('START_', '');
-                        cellDiv.innerHTML = `<span class="arrow">${arrowMap[action] || '?'}</span>`;
+                if (val === 'OBSTACLE') {
+                    cell.classList.add('obstacle-cell');
+                    cell.innerText = 'X';
+                } else if (val === 'END') {
+                    cell.classList.add('end-cell');
+                    cell.innerText = 'END';
+                } else if (typeof val === 'string' && val.startsWith('START_')) {
+                    cell.classList.add('start-cell');
+                    if (type === 'policy') {
+                        const a = val.replace('START_', '');
+                        cell.innerHTML = '<span class="arrow">' + (arrowMap[a] || '?') + '</span>';
                     } else {
-                        cellDiv.innerHTML = `<span class="arrow">${arrowMap[val] || '?'}</span>`;
+                        cell.innerText = 'S';
                     }
-
-                    rowDiv.appendChild(cellDiv);
+                } else if (type === 'policy') {
+                    cell.innerHTML = '<span class="arrow">' + (arrowMap[val] || '?') + '</span>';
+                    if (isPath) cell.classList.add('path-highlight');
+                } else {
+                    // value
+                    if (end && r === end[0] && c === end[1]) {
+                        cell.classList.add('end-cell');
+                        cell.innerText = '0.00';
+                    } else {
+                        cell.innerText = parseFloat(val).toFixed(2);
+                        if (isPath) cell.classList.add('path-highlight');
+                    }
                 }
-                container.appendChild(rowDiv);
+                row.appendChild(cell);
             }
+            container.appendChild(row);
         }
-
-        function renderInfoBar(data) {
-            const bar = document.getElementById('info-bar');
-            bar.innerHTML = `
-                <div class="info-chip"><strong>γ (Gamma)：</strong>${data.gamma}</div>
-                <div class="info-chip"><strong>收斂迭代次數：</strong>${data.iterations}</div>
-                <div class="info-chip"><strong>網格大小：</strong>${n} × ${n}</div>
-                <div class="info-chip"><strong>障礙物數量：</strong>${obstacles.length}</div>
-            `;
-        }
-    </script>
+    }
+</script>
 </body>
 </html>
