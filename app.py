@@ -11,24 +11,22 @@ def index():
 
 @app.route('/evaluate', methods=['POST'])
 def evaluate():
-    """HW1-2: 隨機策略生成 + 策略評估 (Policy Evaluation)"""
+    """HW1-2: 隨機策略生成 + 策略評估 (Policy Evaluation)
+    
+    使用隨機策略 (Stochastic Policy)：每個動作機率 = 1/4
+    公式：V(s) = Σ π(a|s) × [R(s,a) + γ·V(s')]
+              = 0.25 × [R+γV(上)] + 0.25 × [R+γV(下)] + 0.25 × [R+γV(左)] + 0.25 × [R+γV(右)]
+    """
     data = request.json
     n = data['n']
     start = tuple(data['start'])
     end = tuple(data['end'])
     obstacles = [tuple(obs) for obs in data['obstacles']]
 
-    # 隨機生成策略 (Random Policy)
     actions = ['U', 'D', 'L', 'R']
-    policy = {}
-    for r in range(n):
-        for c in range(n):
-            if (r, c) == end or (r, c) in obstacles:
-                policy[(r, c)] = None
-            else:
-                policy[(r, c)] = random.choice(actions)
+    prob = 1.0 / len(actions)  # 均勻隨機策略：每個動作 0.25
 
-    # 策略評估 (Policy Evaluation) — Bellman Equation
+    # 策略評估 (Policy Evaluation) — Bellman Equation with stochastic policy
     V = {(r, c): 0.0 for r in range(n) for c in range(n)}
 
     gamma = 0.9
@@ -46,23 +44,35 @@ def evaluate():
                 if state == end or state in obstacles:
                     continue
 
-                a = policy[state]
-                nr, nc = get_next(r, c, a)
-                next_state = (nr, nc)
+                # 動作機率加權和：Σ π(a|s) × [R + γ·V(s')]
+                weighted_sum = 0.0
+                for a in actions:
+                    nr, nc = get_next(r, c, a)
+                    next_state = (nr, nc)
 
-                # 邊界 / 障礙物檢查
-                if nr < 0 or nr >= n or nc < 0 or nc >= n or next_state in obstacles:
-                    next_state = state
+                    # 邊界 / 障礙物檢查：撞牆則留在原地
+                    if nr < 0 or nr >= n or nc < 0 or nc >= n or next_state in obstacles:
+                        next_state = state
 
-                cur_reward = reward_goal if next_state == end else reward_step
+                    cur_reward = reward_goal if next_state == end else reward_step
+                    weighted_sum += prob * (cur_reward + gamma * V[next_state])
 
                 v_old = V[state]
-                V_new[state] = cur_reward + gamma * V[next_state]
+                V_new[state] = weighted_sum
                 delta = max(delta, abs(v_old - V_new[state]))
 
         V = V_new
         if delta < theta:
             break
+
+    # 隨機策略用於顯示（每個格子隨機一個代表方向）
+    policy = {}
+    for r in range(n):
+        for c in range(n):
+            if (r, c) == end or (r, c) in obstacles:
+                policy[(r, c)] = None
+            else:
+                policy[(r, c)] = random.choice(actions)
 
     # 格式化輸出
     v_matrix, p_matrix = format_matrices(n, V, policy, start, end, obstacles)
